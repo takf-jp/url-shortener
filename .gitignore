@@ -1,0 +1,21 @@
+# binaries
+/bin/
+/url-shortener
+*.exe
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# env
+.env
+.env.local
+
+# logs
+*.log

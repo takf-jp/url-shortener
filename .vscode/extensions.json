@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "golang.go",
+    "usernamehw.errorlens",
+    "eamodio.gitlens",
+    "ms-azuretools.vscode-docker",
+    "humao.rest-client"
+  ]
+}
