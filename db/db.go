@@ -12,7 +12,6 @@ func New(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("failed to create connection pool: %w", err)
 	}
 
-	err = pool.Ping(ctx)
 	if err := pool.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
