@@ -9,6 +9,10 @@ import (
 	"github.com/takf-jp/url-shortener/repository"
 )
 
+type URLRepository interface {
+	Create(ctx context.Context, code, originalURL string) (*repository.URL, error)
+}
+
 const (
 	codeLength = 6
 	charset   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -16,10 +20,10 @@ const (
 )
 
 type ShortenService struct {
-	repo *repository.URLRepository
+	repo URLRepository
 }
 
-func NewShortenService(repo *repository.URLRepository) *ShortenService {
+func NewShortenService(repo URLRepository) *ShortenService {
 	return &ShortenService{repo: repo}
 }
 
@@ -41,7 +45,7 @@ func (s *ShortenService) Shorten(ctx context.Context, originalURL string) (*repo
 		}
 		return nil, err
 	}
-	return nil, errors.New("failed to generate a unique code after max retries")
+	return nil, fmt.Errorf("failed to generate a unique code after %d retries: %w", maxRetry, repository.ErrCodeConflict)
 }
 
 func generateCode(length int) (string, error) {

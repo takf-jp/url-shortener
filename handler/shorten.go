@@ -10,17 +10,23 @@ import (
 	"github.com/takf-jp/url-shortener/service"
 )
 
-type ShortenHandler struct {
-	shortenService *service.ShortenService
-	repo *repository.URLRepository
-	baseURL string
+// URLFinder は Redirect が必要とする「コードから URL を引く」振る舞いだけを表す。
+// 具体型ではなくこれに依存させることで、テストで fake を差し込める（依存性逆転）。
+type URLFinder interface {
+	FindByCode(ctx context.Context, code string) (*repository.URL, error)
 }
 
-func NewShortenHandler(shortenService *service.ShortenService, repo *repository.URLRepository, baseURL string) *ShortenHandler {
+type ShortenHandler struct {
+	shortenService *service.ShortenService
+	repo           URLFinder
+	baseURL        string
+}
+
+func NewShortenHandler(shortenService *service.ShortenService, repo URLFinder, baseURL string) *ShortenHandler {
 	return &ShortenHandler{
 		shortenService: shortenService,
-		repo:             repo,
-		baseURL:          baseURL,
+		repo:           repo,
+		baseURL:        baseURL,
 	}
 }
 
@@ -67,5 +73,3 @@ func (h *ShortenHandler) Redirect(c echo.Context) error {
 	}
 	return c.Redirect(http.StatusFound, u.OriginalURL)
 }
-
-var _ = context.TODO //unused import 警告回避用、後で削除
