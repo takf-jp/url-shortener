@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type URL struct {
@@ -34,9 +35,12 @@ func (r *URLRepository) Create(ctx context.Context, code, originalURL string) (*
 	`
 
 	var url URL
+	var pgErr *pgconn.PgError
 	err := r.pool.QueryRow(ctx, query, code, originalURL).Scan(&url.ID, &url.Code, &url.OriginalURL)
 	if err != nil {
-		// UNIQUE制約違反の判定（PostgreSQLのエラーコードは "23505"）
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique_violation
+			return nil, ErrCodeConflict
+		}
 		return nil, fmt.Errorf("Create: %w", err)
 	}
 	return &url, nil
