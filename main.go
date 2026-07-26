@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -12,7 +12,8 @@ import (
 	"github.com/takf-jp/url-shortener/db"
 	"github.com/takf-jp/url-shortener/handler"
 	"github.com/takf-jp/url-shortener/internal/auth"
-	appmiddleware	"github.com/takf-jp/url-shortener/internal/middleware"
+	"github.com/takf-jp/url-shortener/internal/logger"
+	appmiddleware "github.com/takf-jp/url-shortener/internal/middleware"
 	"github.com/takf-jp/url-shortener/repository"
 	"github.com/takf-jp/url-shortener/service"
 )
@@ -20,18 +21,29 @@ import (
 func main() {
 	ctx := context.Background()
 
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "development"
+	}
+	log := logger.New(env)
+	slog.SetDefault(log)
+	log.Info("app starting", "env", env)
+
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		log.Fatal("DATABASE_URL environment variable is not set")
+		log.Error("DATABASE_URL environment variable is not set")
+		os.Exit(1)
 	}
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		log.Fatal("JWT_SECRET environment variable is not set")
+		log.Error("JWT_SECRET environment variable is not set")
+		os.Exit(1)
 	}
 
 	pool, err := db.New(ctx, dsn)
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		log.Error("failed to connect to database", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
@@ -51,6 +63,8 @@ func main() {
 	urlHandler := handler.NewShortenHandler(shortenService, urlRepo, "http://localhost:8080")
 
     e := echo.New()
+	e.Use(middleware.RequestID())
+	e.Use(appmiddleware.InjectLogger(log))
     e.Use(middleware.RequestLogger())
     e.Use(middleware.Recover())
 
