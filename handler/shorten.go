@@ -8,12 +8,14 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/takf-jp/url-shortener/repository"
 	"github.com/takf-jp/url-shortener/service"
+	"github.com/takf-jp/url-shortener/internal/middleware"
 )
 
 // URLFinder は Redirect が必要とする「コードから URL を引く」振る舞いだけを表す。
 // 具体型ではなくこれに依存させることで、テストで fake を差し込める（依存性逆転）。
 type URLFinder interface {
 	FindByCode(ctx context.Context, code string) (*repository.URL, error)
+	FindByUserID(ctx context.Context, userID int64) ([]*repository.URL, error)
 }
 
 type ShortenHandler struct {
@@ -41,10 +43,12 @@ type shortenResponse struct {
 }
 
 func (h *ShortenHandler) Create(c echo.Context) error {
-	var req shortenRequest
-	if err := c.Bind(&req); err != nil {
+	uid, ok := middleware.GetUserIDFromContext(c)
+
+	if !ok {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
 	}
+	var req shortenRequest
 	if req.OriginalURL == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "url is required")
 	}
@@ -52,7 +56,7 @@ func (h *ShortenHandler) Create(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid url format")
 	}
 
-	u, err := h.shortenService.Shorten(c.Request().Context(), req.OriginalURL)
+	u, err := h.shortenService.Shorten(c.Request().Context(), &uid, req.OriginalURL)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to shorten url")
 	}
@@ -72,4 +76,17 @@ func (h *ShortenHandler) Redirect(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "url not found")
 	}
 	return c.Redirect(http.StatusFound, u.OriginalURL)
+}
+
+func (h *ShortenHandler) ListMine(c echo.Context) error {
+	uid, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	urls, err := h.repo.FindByUserID(c.Request().Context(), uid)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list urls")
+	}
+	return c.JSON(http.StatusOK, urls)
 }

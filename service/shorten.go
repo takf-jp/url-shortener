@@ -10,7 +10,7 @@ import (
 )
 
 type URLRepository interface {
-	Create(ctx context.Context, code, originalURL string) (*repository.URL, error)
+	Create(ctx context.Context, code, originalURL string, userID *int64) (*repository.URL, error)
 }
 
 const (
@@ -28,14 +28,14 @@ func NewShortenService(repo URLRepository) *ShortenService {
 }
 
 // Shortenは URL を短縮する。 衝突時は最大 3 回リトライ。
-func (s *ShortenService) Shorten(ctx context.Context, originalURL string) (*repository.URL, error) {
+func (s *ShortenService) Shorten(ctx context.Context, userID *int64, originalURL string) (*repository.URL, error) {
 	for i := 0; i < maxRetry; i++ {
 		code, err := generateCode(codeLength)
 		if err != nil {
 			return nil, fmt.Errorf("generateCode: %w", err)
 		}
 
-		u, err := s.repo.Create(ctx, code, originalURL)
+		u, err := s.repo.Create(ctx, code, originalURL, userID)
 		if err == nil {
 			return u, nil
 		}
