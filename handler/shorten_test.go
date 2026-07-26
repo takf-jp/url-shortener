@@ -14,6 +14,7 @@ import (
 
 type fakeURLFinder struct {
 	findFunc func(ctx context.Context, code string) (*repository.URL, error)
+	findByUserFunc func(ctx context.Context, userID int64) ([]*repository.URL, error)
 }
 
 func (f *fakeURLFinder) FindByCode(ctx context.Context, code string) (*repository.URL, error) {
@@ -21,7 +22,7 @@ func (f *fakeURLFinder) FindByCode(ctx context.Context, code string) (*repositor
 }
 
 func (f *fakeURLFinder) FindByUserID(ctx context.Context, userID int64) ([]*repository.URL, error) {
-	return nil, nil
+	return f.findByUserFunc(ctx, userID)
 }
 
 func TestShortenHandler_Redirect_見つかった場合_302(t *testing.T) {
@@ -72,5 +73,56 @@ func TestShortenHandler_Create_不正URL_400(t *testing.T) {
 	}
 	if httpErr.Code != http.StatusBadRequest {
 		t.Errorf("expected status code 400, got %d", httpErr.Code)
+	}
+}
+
+func TestShortenHandler_ListMine_正常系(t *testing.T) {
+	finder := &fakeURLFinder{
+		findByUserFunc: func(ctx context.Context, userID int64) ([]*repository.URL, error) {
+			return []*repository.URL{
+				{ID:1, Code: "abc123", OriginalURL: "https://go.dev/"},
+			}, nil
+		},
+	}
+	h := NewShortenHandler(nil, finder, "http://localhost:8080")
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/me/urls", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("userID", int64(42)) // Middlewareのかわりに context に userID をセット
+
+	if err := h.ListMine(c); err != nil {
+		t.Fatalf("ListMine returned error: %v", err)
+	}
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected status code 200, got %d", rec.Code)
+	}
+
+	if !strings.Contains(rec.Body.String(), "abc123") {
+		t.Errorf("expected response body to contain 'abc123', got '%s'", rec.Body.String())
+	}
+}
+
+func TestShortenHandler_ListMine_認証なし_401(t *testing.T) {
+	finder := &fakeURLFinder{
+		findByUserFunc: func(ctx context.Context, userID int64) ([]*repository.URL, error) {
+			return []*repository.URL{
+				{ID:1, Code: "abc123", OriginalURL: "https://go.dev/"},
+			}, nil
+		},
+	}
+	h := NewShortenHandler(nil, finder, "http://localhost:8080")
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/me/urls", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err := h.ListMine(c)
+	var httpErr *echo.HTTPError
+	if !errors.As(err, &httpErr) || httpErr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected an 401, got %v", err)
 	}
 }
