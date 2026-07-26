@@ -20,6 +20,10 @@ func (f *fakeURLFinder) FindByCode(ctx context.Context, code string) (*repositor
 	return f.findFunc(ctx, code)
 }
 
+func (f *fakeURLFinder) FindByUserID(ctx context.Context, userID int64) ([]*repository.URL, error) {
+	return nil, nil
+}
+
 func TestShortenHandler_Redirect_見つかった場合_302(t *testing.T) {
 	finder := &fakeURLFinder{
 		findFunc: func(ctx context.Context, code string) (*repository.URL, error) {

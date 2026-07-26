@@ -46,9 +46,12 @@ func (h *ShortenHandler) Create(c echo.Context) error {
 	uid, ok := middleware.GetUserIDFromContext(c)
 
 	if !ok {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+		return echo.NewHTTPError(http.StatusBadRequest, "unauthorized")
 	}
 	var req shortenRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
 	if req.OriginalURL == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "url is required")
 	}
@@ -81,7 +84,7 @@ func (h *ShortenHandler) Redirect(c echo.Context) error {
 func (h *ShortenHandler) ListMine(c echo.Context) error {
 	uid, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 	}
 
 	urls, err := h.repo.FindByUserID(c.Request().Context(), uid)

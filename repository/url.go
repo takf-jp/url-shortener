@@ -49,7 +49,7 @@ func (r *URLRepository) Create(ctx context.Context, code, originalURL string, us
 
 func (r *URLRepository) FindByUserID(ctx context.Context, userID int64) ([]*URL, error) {
 	const query = `
-		SELECT id, code, original_url
+		SELECT id, code, original_url, user_id
 		FROM urls
 		WHERE user_id = $1
 		ORDER BY id DESC

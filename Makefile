@@ -19,7 +19,7 @@ migrate-test:
 	goose -dir migrations postgres "$(DSN_TEST)" up
 
 run:
-	DATABASE_URL="$(DSN_DEV)" go run .
+	set -a; . ./.env; set +a; go run .
 
 test:
 	TEST_DATABASE_URL="$(DSN_TEST)" go test ./... -v

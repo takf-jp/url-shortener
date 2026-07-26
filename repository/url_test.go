@@ -13,7 +13,7 @@ func TestURLRepository_Create_正常系(t *testing.T) {
 	testutil.TruncateAll(t, pool)
 	repo := NewURLRepository(pool)
 
-	u, err := repo.Create(context.Background(), "abc123", "https://example.com")
+	u, err := repo.Create(context.Background(), "abc123", "https://example.com", nil)
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestURLRepository_FindByCode_存在する場合_取得できる(t *testing.
 	testutil.TruncateAll(t, pool)
 	repo := NewURLRepository(pool)
 
-	_, err := repo.Create(context.Background(), "xyz789", "https://go.dev/")
+	_, err := repo.Create(context.Background(), "xyz789", "https://go.dev/", nil)
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}

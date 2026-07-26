@@ -10,24 +10,24 @@ import (
 )
 
 type fakeRepo struct {
-	createFunc func(ctx context.Context, code, originalURL string) (*repository.URL, error)
+	createFunc func(ctx context.Context, code, originalURL string, userID *int64) (*repository.URL, error)
 	calls int
 }
 
-func (f *fakeRepo) Create(ctx context.Context, code, originalURL string) (*repository.URL, error) {
+func (f *fakeRepo) Create(ctx context.Context, code, originalURL string, userID *int64) (*repository.URL, error) {
 	f.calls++
-	return f.createFunc(ctx, code, originalURL)
+	return f.createFunc(ctx, code, originalURL, userID)
 }
 
 func TestShortenService_Shorten_成功(t *testing.T) {
 	repo := &fakeRepo{
-		createFunc: func(ctx context.Context, code, originalURL string) (*repository.URL, error) {
+		createFunc: func(ctx context.Context, code, originalURL string, userID *int64) (*repository.URL, error) {
 			return &repository.URL{Code: code, OriginalURL: originalURL}, nil
 		},
 	}
 	service := NewShortenService(repo)
 
-	u, err := service.Shorten(context.Background(), "https://example.com")
+	u, err := service.Shorten(context.Background(), nil, "https://example.com")
 	if err != nil {
 		t.Fatalf("Shorten failed: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestShortenService_Shorten_成功(t *testing.T) {
 func TestShortenService_Shorten_衝突時にリトライ(t *testing.T) {
 	callCount := 0
 	repo := &fakeRepo{
-		createFunc: func(ctx context.Context, code, originalURL string) (*repository.URL, error) {
+		createFunc: func(ctx context.Context, code, originalURL string, userID *int64) (*repository.URL, error) {
 			callCount++
 			if callCount < 2 {
 				return nil, repository.ErrCodeConflict
@@ -52,7 +52,7 @@ func TestShortenService_Shorten_衝突時にリトライ(t *testing.T) {
 	}
 	service := NewShortenService(repo)
 
-	_, err := service.Shorten(context.Background(), "https://example.com")
+	_, err := service.Shorten(context.Background(), nil, "https://example.com")
 	if err != nil {
 		t.Fatalf("Shorten failed: %v", err)
 	}
@@ -63,13 +63,13 @@ func TestShortenService_Shorten_衝突時にリトライ(t *testing.T) {
 
 func TestShortenService_Shorten_リトライ上限超え_失敗(t *testing.T) {
 	repo := &fakeRepo{
-		createFunc: func(ctx context.Context, code, originalURL string) (*repository.URL, error) {
+		createFunc: func(ctx context.Context, code, originalURL string, userID *int64) (*repository.URL, error) {
 			return nil, repository.ErrCodeConflict
 		},
 	}
 	service := NewShortenService(repo)
 
-	_, err := service.Shorten(context.Background(), "https://example.com")
+	_, err := service.Shorten(context.Background(), nil, "https://example.com")
 	if err == nil {
 		t.Fatalf("expected error due to max retries exceeded, got nil")
 	}
