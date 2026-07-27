@@ -1,7 +1,8 @@
 .PHONY: up down logs migrate migrate-test test test-unit test-integration run cover build
 
-DSN_DEV  := postgres://dev:dev@localhost:5432/url_shortener?sslmode=disable
-DSN_TEST := postgres://test:test@localhost:5433/url_shortener_test?sslmode=disable
+# ?= にしてあるので、環境変数で上書きできる
+DSN_DEV  ?= postgres://dev:dev@localhost:5432/url_shortener?sslmode=disable
+DSN_TEST ?= postgres://test:test@localhost:5433/url_shortener_test?sslmode=disable
 
 up:
 	docker compose up -d
