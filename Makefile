@@ -1,4 +1,4 @@
-.PHONY: up down logs migrate migrate-test test test-unit test-integration run cover build
+.PHONY: up down logs migrate migrate-test test test-unit test-race test-integration run cover build
 
 # ?= にしてあるので、環境変数で上書きできる
 DSN_DEV  ?= postgres://dev:dev@localhost:5432/url_shortener?sslmode=disable
@@ -27,6 +27,9 @@ test:
 
 test-unit:
 	go test ./service/... ./handler/... -v
+
+test-race:
+	TEST_DATABASE_URL="$(DSN_TEST)" go test ./... -race
 
 test-integration:
 	TEST_DATABASE_URL="$(DSN_TEST)" go test ./repository/... -v
