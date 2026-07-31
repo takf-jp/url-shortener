@@ -4,11 +4,16 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"time"
+	"log/slog"
 
 	"github.com/labstack/echo/v4"
+
+	"github.com/takf-jp/url-shortener/internal/concurrent"
+	"github.com/takf-jp/url-shortener/internal/logger"
+	"github.com/takf-jp/url-shortener/internal/middleware"
 	"github.com/takf-jp/url-shortener/repository"
 	"github.com/takf-jp/url-shortener/service"
-	"github.com/takf-jp/url-shortener/internal/middleware"
 )
 
 // URLFinder は Redirect が必要とする「コードから URL を引く」振る舞いだけを表す。
@@ -18,16 +23,22 @@ type URLFinder interface {
 	FindByUserID(ctx context.Context, userID int64) ([]*repository.URL, error)
 }
 
+type ClickRecorder interface {
+	Insert(ctx context.Context, urlID int64, ip string, userAgent string) error
+}
+
 type ShortenHandler struct {
 	shortenService *service.ShortenService
-	repo           URLFinder
+	urlRepo           URLFinder
+	clickRepo      ClickRecorder
 	baseURL        string
 }
 
-func NewShortenHandler(shortenService *service.ShortenService, repo URLFinder, baseURL string) *ShortenHandler {
+func NewShortenHandler(shortenService *service.ShortenService, urlRepo URLFinder, clickRepo ClickRecorder, baseURL string) *ShortenHandler {
 	return &ShortenHandler{
 		shortenService: shortenService,
-		repo:           repo,
+		urlRepo:        urlRepo,
+		clickRepo:      clickRepo,
 		baseURL:        baseURL,
 	}
 }
@@ -72,12 +83,34 @@ func (h *ShortenHandler) Create(c echo.Context) error {
 }
 
 func (h *ShortenHandler) Redirect(c echo.Context) error {
+	ctx := c.Request().Context()
+	log := logger.FromContext(ctx)
+
 	code := c.Param("code")
-	u, err := h.repo.FindByCode(c.Request().Context(), code)
+	u, err := h.urlRepo.FindByCode(ctx, code)
 	if err != nil {
 		// ErrNotFoundの場合は404を返す, それ以外のエラーは500を返す
 		return echo.NewHTTPError(http.StatusNotFound, "url not found")
 	}
+	// ★ 非同期でクリック記録
+    // 重要: ctx をそのまま渡すと、 c.Request().Context() が
+    // レスポンス返却後にキャンセルされて中途半端に終わる可能性。
+    // → 切り離した context を作る
+	backgroundCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	backgroundCtx = logger.WithLogger(backgroundCtx, log)
+
+	ip := c.RealIP()
+	userAgent := c.Request().UserAgent()
+
+	concurrent.Go(backgroundCtx, func() {
+		defer cancel()
+		if err := h.clickRepo.Insert(backgroundCtx, u.ID, ip, userAgent); err != nil {
+			log.Error("failed to record click", "error", err)
+			return
+		}
+		log.Debug("click recorded", slog.Int64("url_id", u.ID))
+	})
+
 	return c.Redirect(http.StatusFound, u.OriginalURL)
 }
 
@@ -87,7 +120,7 @@ func (h *ShortenHandler) ListMine(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 	}
 
-	urls, err := h.repo.FindByUserID(c.Request().Context(), uid)
+	urls, err := h.urlRepo.FindByUserID(c.Request().Context(), uid)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list urls")
 	}

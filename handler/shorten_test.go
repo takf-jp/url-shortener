@@ -17,6 +17,12 @@ type fakeURLFinder struct {
 	findByUserFunc func(ctx context.Context, userID int64) ([]*repository.URL, error)
 }
 
+type fakeClickRecorder struct {}
+
+func (f *fakeClickRecorder) Insert(ctx context.Context, urlID int64, ip string, userAgent string) error {
+	return nil
+}
+
 func (f *fakeURLFinder) FindByCode(ctx context.Context, code string) (*repository.URL, error) {
 	return f.findFunc(ctx, code)
 }
@@ -34,7 +40,7 @@ func TestShortenHandler_Redirect_見つかった場合_302(t *testing.T) {
 			return nil, repository.ErrNotFound
 		},
 	}
-	h := NewShortenHandler(nil, finder, "http://localhost:8080")
+	h := NewShortenHandler(nil, finder, &fakeClickRecorder{}, "http://localhost:8080")
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/abc123", nil)
@@ -56,7 +62,7 @@ func TestShortenHandler_Redirect_見つかった場合_302(t *testing.T) {
 }
 
 func TestShortenHandler_Create_不正URL_400(t *testing.T) {
-	h := NewShortenHandler(nil, nil, "http://localhost:8080")
+	h := NewShortenHandler(nil, nil, &fakeClickRecorder{}, "http://localhost:8080")
 
     e := echo.New()
     body := strings.NewReader(`{"url":"not-a-url"}`)
@@ -84,7 +90,7 @@ func TestShortenHandler_ListMine_正常系(t *testing.T) {
 			}, nil
 		},
 	}
-	h := NewShortenHandler(nil, finder, "http://localhost:8080")
+	h := NewShortenHandler(nil, finder, &fakeClickRecorder{}, "http://localhost:8080")
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/me/urls", nil)
@@ -113,7 +119,7 @@ func TestShortenHandler_ListMine_認証なし_401(t *testing.T) {
 			}, nil
 		},
 	}
-	h := NewShortenHandler(nil, finder, "http://localhost:8080")
+	h := NewShortenHandler(nil, finder, &fakeClickRecorder{}, "http://localhost:8080")
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/me/urls", nil)
