@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -72,8 +73,9 @@ func main() {
 
 	// 公開エンドポイント
     e.GET("/health", func(c echo.Context) error {
-        return c.JSON(200, map[string]string{
+        return c.JSON(200, map[string]any{
             "status": "ok",
+			"goroutines" : runtime.NumGoroutine(),
         })
     })
 	e.POST("/signup", userHandler.Signup)
