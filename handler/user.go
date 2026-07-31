@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/takf-jp/url-shortener/service"
+	"github.com/takf-jp/url-shortener/repository"
 )
 
 type UserHandler struct {
@@ -41,6 +42,9 @@ func (h *UserHandler) Signup(c echo.Context) error {
 	}
 	user, err := h.userService.Signup(c.Request().Context(), req.Email, req.Password)
 	if err != nil {
+		if errors.Is(err, repository.ErrUserExists) {
+			return echo.NewHTTPError(http.StatusConflict, "email already exists")
+		}
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create user")
 	}
 	return c.JSON(http.StatusCreated, signupResponse{

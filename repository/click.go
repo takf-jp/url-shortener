@@ -50,7 +50,7 @@ func (r *ClickRepository) AggregateClickCounts(ctx context.Context) error {
 		FROM (
 			SELECT url_id, COUNT(*) AS click_count
 			FROM url_clicks
-			WHERE aggregated = false
+			WHERE aggregated = false AND id <= $1
 			GROUP BY url_id
 		) AS subquery
 		WHERE urls.id = subquery.url_id
