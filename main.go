@@ -46,7 +46,6 @@ func main() {
 		log.Error("db connect", slog.Any("error", err))
 		os.Exit(1)
 	}
-	defer pool.Close()
 
 	// Repositories
 	urlRepo := repository.NewURLRepository(pool)

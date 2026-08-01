@@ -5,10 +5,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
-func NewTestPool(t *testing.T) *pgxpool.Pool {
+func NewTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	dsn := os.Getenv("TEST_DATABASE_URL")
@@ -16,26 +18,32 @@ func NewTestPool(t *testing.T) *pgxpool.Pool {
 		t.Fatal("TEST_DATABASE_URL environment variable is not set")
 	}
 
-	pool, err := pgxpool.New(context.Background(), dsn)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 	if err != nil {
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
-	if err := pool.Ping(context.Background()); err != nil {
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("failed to get sql.DB from gorm.DB: %v", err)
+	}
+	if err := sqlDB.PingContext(context.Background()); err != nil {
 		t.Fatalf("failed to ping test database: %v", err)
 	}
 
 	t.Cleanup(func() {
-		pool.Close()
+		sqlDB.Close()
 	})
 
-	return pool
+	return db
 }
 
-func TruncateAll(t *testing.T, pool *pgxpool.Pool) {
+func TruncateAll(t *testing.T, db *gorm.DB) {
 	t.Helper()
 
-	_, err := pool.Exec(context.Background(), "TRUNCATE TABLE urls RESTART IDENTITY CASCADE")
-	if err != nil {
+	if err := db.Exec("TRUNCATE TABLE urls, users RESTART IDENTITY CASCADE").Error; err != nil {
 		t.Fatalf("failed to truncate tables: %v", err)
 	}
 }

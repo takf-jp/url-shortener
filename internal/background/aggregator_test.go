@@ -12,9 +12,9 @@ import (
 )
 
 func TestAggregator_Run_キャンセルで停止(t *testing.T) {
-	pool := testutil.NewTestPool(t)
-	testutil.TruncateAll(t, pool)
-	repo := repository.NewClickRepository(pool)
+	db := testutil.NewTestDB(t)
+	testutil.TruncateAll(t, db)
+	repo := repository.NewClickRepository(db)
 
 	a := background.NewAggregator(repo, 100*time.Millisecond)
 

@@ -3,47 +3,46 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
 )
 
-type ClickRepository struct {
-	pool *pgxpool.Pool
+type Click struct {
+	ID        int64     `gorm:"primaryKey"`
+	URLID     int64     `gorm:"column:url_id"`
+	AcecessedAt time.Time `gorm:"column:accessed_at;default:now()"`
+	IP        string    `gorm:"column:ip"`
+	UserAgent string    `gorm:"column:user_agent"`
+	Aggregated bool     `gorm:"column:aggregated;default:false"`
 }
 
-func NewClickRepository(pool *pgxpool.Pool) *ClickRepository {
-	return &ClickRepository{pool: pool}
+func (Click) TableName() string { return "url_clicks" }
+
+type ClickRepository struct {
+	db *gorm.DB
+}
+
+
+func NewClickRepository(db *gorm.DB) *ClickRepository {
+	return &ClickRepository{db: db}
 }
 
 func (r *ClickRepository) Insert(ctx context.Context, urlID int64, ip, userAgent string) error {
-	const query = `
-		INSERT INTO url_clicks (url_id, ip, user_agent)
-		VALUES ($1, $2, $3)
-	`
-	_, err := r.pool.Exec(ctx, query, urlID, ip, userAgent)
-	if err != nil {
-		return fmt.Errorf("failed to insert click: %w", err)
+	click := Click{
+		URLID:      urlID,
+		IP: ip,
+		UserAgent:  userAgent,
+	}
+
+	if err := r.db.WithContext(ctx).Create(&click).Error; err != nil {
+		return fmt.Errorf("Insert: %w", err)
 	}
 	return nil
 }
 
 // AggregateClickCountsはurl_clicksを集計し、urls.click_countを更新する
 func (r *ClickRepository) AggregateClickCounts(ctx context.Context) error {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback(ctx) // Commit 済みなら何もしない
-
-	// 集計対象の上限を固定する
-	var maxID int64
-	const maxIDQuery = `
-		SELECT COALESCE(MAX(id), 0) FROM url_clicks WHERE aggregated = false
-		`
-	if err := tx.QueryRow(ctx, maxIDQuery).Scan(&maxID); err != nil {
-		return fmt.Errorf("failed to get max id: %w", err)
-	}
-
 	const aggregateQuery = `
 		UPDATE urls
 		SET click_count = urls.click_count + subquery.click_count
@@ -55,18 +54,27 @@ func (r *ClickRepository) AggregateClickCounts(ctx context.Context) error {
 		) AS subquery
 		WHERE urls.id = subquery.url_id
 	`
-	if _, err := tx.Exec(ctx, aggregateQuery, maxID); err != nil {
-		return fmt.Errorf("failed to aggregate click counts: %w", err)
-	}
 
 	const markAggregatedQuery = `
 		UPDATE url_clicks
 		SET aggregated = true
 		WHERE aggregated = false AND id <= $1
 	`
-	if _, err := tx.Exec(ctx, markAggregatedQuery, maxID); err != nil {
-		return fmt.Errorf("failed to mark clicks as aggregated: %w", err)
-	}
 
-	return tx.Commit(ctx)
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var maxID int64
+		if err := tx.Raw(`SELECT COALESCE(MAX(id), 0) FROM url_clicks WHERE aggregated = false`).Scan(&maxID).Error; err != nil {
+			return fmt.Errorf("failed to get max id: %w", err)
+		}
+
+		if err := tx.Exec(aggregateQuery, maxID).Error; err != nil {
+			return fmt.Errorf("failed to aggregate click counts: %w", err)
+		}
+
+		if err := tx.Exec(markAggregatedQuery, maxID).Error; err != nil {
+			return fmt.Errorf("failed to mark clicks as aggregated: %w", err)
+		}
+
+		return nil
+	})
 }
