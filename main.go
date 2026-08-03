@@ -80,7 +80,7 @@ func main() {
 
 	ctx = logger.WithLogger(ctx, log)
 
-	gormDB, err := db.New(ctx, cfg.DatabaseURL)
+	gormDB, err := db.New(ctx, cfg.DatabaseURL, env)
 	if err != nil {
 		log.Error("db connect", slog.Any("error", err))
 		os.Exit(1)
