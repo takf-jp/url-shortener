@@ -10,13 +10,13 @@ import (
 )
 
 type Aggregator struct {
-	repo *repository.ClickRepository
+	repo     *repository.ClickRepository
 	interval time.Duration
 }
 
 func NewAggregator(repo *repository.ClickRepository, interval time.Duration) *Aggregator {
 	return &Aggregator{
-		repo: repo,
+		repo:     repo,
 		interval: interval,
 	}
 }

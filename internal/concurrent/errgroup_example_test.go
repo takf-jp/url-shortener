@@ -26,7 +26,7 @@ func TestErrgroup_3つのURLを並列GET(t *testing.T) {
 	defer srv3.Close()
 
 	urls := []string{srv1.URL, srv2.URL, srv3.URL}
-	results := make([]string, len(urls)	)
+	results := make([]string, len(urls))
 
 	start := time.Now()
 	// errgroupを使って並列にGETリクエストを送る

@@ -1,11 +1,11 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-	"errors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/takf-jp/url-shortener/internal/auth"

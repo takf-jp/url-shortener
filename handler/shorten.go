@@ -2,10 +2,10 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
-	"log/slog"
 
 	"github.com/labstack/echo/v4"
 
@@ -29,7 +29,7 @@ type ClickRecorder interface {
 
 type ShortenHandler struct {
 	shortenService *service.ShortenService
-	urlRepo           URLFinder
+	urlRepo        URLFinder
 	clickRepo      ClickRecorder
 	baseURL        string
 }
@@ -48,8 +48,8 @@ type shortenRequest struct {
 }
 
 type shortenResponse struct {
-	Code string `json:"code"`
-	OriginalURL string `json:"original_url"`
+	Code         string `json:"code"`
+	OriginalURL  string `json:"original_url"`
 	ShortenedURL string `json:"shortened_url"`
 }
 
@@ -76,8 +76,8 @@ func (h *ShortenHandler) Create(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, shortenResponse{
-		Code: u.Code,
-		OriginalURL: u.OriginalURL,
+		Code:         u.Code,
+		OriginalURL:  u.OriginalURL,
 		ShortenedURL: h.baseURL + "/" + u.Code,
 	})
 }
@@ -93,9 +93,9 @@ func (h *ShortenHandler) Redirect(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "url not found")
 	}
 	// ★ 非同期でクリック記録
-    // 重要: ctx をそのまま渡すと、 c.Request().Context() が
-    // レスポンス返却後にキャンセルされて中途半端に終わる可能性。
-    // → 切り離した context を作る
+	// 重要: ctx をそのまま渡すと、 c.Request().Context() が
+	// レスポンス返却後にキャンセルされて中途半端に終わる可能性。
+	// → 切り離した context を作る
 	backgroundCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	backgroundCtx = logger.WithLogger(backgroundCtx, log)
 

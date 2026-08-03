@@ -1,8 +1,8 @@
 package logger
 
 import (
-	"log/slog"
 	"context"
+	"log/slog"
 )
 
 type contextKey struct{}

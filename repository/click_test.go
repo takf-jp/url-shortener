@@ -23,6 +23,6 @@ func TestClickRepository_Insert_accessed_atが現在時刻(t *testing.T) {
 	var accessedAt time.Time
 	db.Raw("SELECT accessed_at FROM url_clicks WHERE url_id = ?", u.ID).Scan(&accessedAt)
 	if accessedAt.Year() < 2020 {
-		t.Errorf("accessed_at looks like a zero value: %v", accessedAt)   // 西暦1年ならバグ
+		t.Errorf("accessed_at looks like a zero value: %v", accessedAt) // 西暦1年ならバグ
 	}
 }

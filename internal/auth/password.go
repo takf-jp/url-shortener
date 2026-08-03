@@ -5,7 +5,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-//ハッシュ計算回数の指数
+// ハッシュ計算回数の指数
 const bcryptCost = 12
 
 func HashPassword(plain string) (string, error) {

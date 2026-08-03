@@ -9,12 +9,12 @@ import (
 )
 
 type Click struct {
-	ID        int64     `gorm:"primaryKey"`
-	URLID     int64     `gorm:"column:url_id"`
+	ID          int64     `gorm:"primaryKey"`
+	URLID       int64     `gorm:"column:url_id"`
 	AcecessedAt time.Time `gorm:"column:accessed_at;default:now()"`
-	IP        string    `gorm:"column:ip"`
-	UserAgent string    `gorm:"column:user_agent"`
-	Aggregated bool     `gorm:"column:aggregated;default:false"`
+	IP          string    `gorm:"column:ip"`
+	UserAgent   string    `gorm:"column:user_agent"`
+	Aggregated  bool      `gorm:"column:aggregated;default:false"`
 }
 
 func (Click) TableName() string { return "url_clicks" }
@@ -23,16 +23,15 @@ type ClickRepository struct {
 	db *gorm.DB
 }
 
-
 func NewClickRepository(db *gorm.DB) *ClickRepository {
 	return &ClickRepository{db: db}
 }
 
 func (r *ClickRepository) Insert(ctx context.Context, urlID int64, ip, userAgent string) error {
 	click := Click{
-		URLID:      urlID,
-		IP: ip,
-		UserAgent:  userAgent,
+		URLID:     urlID,
+		IP:        ip,
+		UserAgent: userAgent,
 	}
 
 	if err := r.db.WithContext(ctx).Create(&click).Error; err != nil {

@@ -11,7 +11,7 @@ import (
 
 type fakeRepo struct {
 	createFunc func(ctx context.Context, code, originalURL string, userID *int64) (*repository.URL, error)
-	calls int
+	calls      int
 }
 
 func (f *fakeRepo) Create(ctx context.Context, code, originalURL string, userID *int64) (*repository.URL, error) {
@@ -75,10 +75,10 @@ func TestShortenService_Shorten_リトライ上限超え_失敗(t *testing.T) {
 	}
 	if !errors.Is(err, repository.ErrCodeConflict) {
 		t.Fatalf("expected ErrCodeConflict or wrapped error, got %v", err)
-    }
-    if repo.calls != maxRetry {
-        t.Errorf("expected %d calls, got %d", maxRetry, repo.calls)
-    }
+	}
+	if repo.calls != maxRetry {
+		t.Errorf("expected %d calls, got %d", maxRetry, repo.calls)
+	}
 }
 
 func TestGenerateCode_長さが指定通り(t *testing.T) {
@@ -92,27 +92,27 @@ func TestGenerateCode_長さが指定通り(t *testing.T) {
 }
 
 func TestGenerateCode_長さ別(t *testing.T) {
-    cases := []struct {
-        name    string
-        length  int
-        wantLen int
-    }{
-        {"6文字", 6, 6},
-        {"10文字", 10, 10},
-        {"1文字", 1, 1},
-    }
+	cases := []struct {
+		name    string
+		length  int
+		wantLen int
+	}{
+		{"6文字", 6, 6},
+		{"10文字", 10, 10},
+		{"1文字", 1, 1},
+	}
 
-    for _, tt := range cases {
-        t.Run(tt.name, func(t *testing.T) {
-            code, err := generateCode(tt.length)
-            if err != nil {
-                t.Fatalf("generateCode: %v", err)
-            }
-            if len(code) != tt.wantLen {
-                t.Errorf("got %d, want %d", len(code), tt.wantLen)
-            }
-        })
-    }
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			code, err := generateCode(tt.length)
+			if err != nil {
+				t.Fatalf("generateCode: %v", err)
+			}
+			if len(code) != tt.wantLen {
+				t.Errorf("got %d, want %d", len(code), tt.wantLen)
+			}
+		})
+	}
 }
 
 func TestGenerateCode_文字セット範囲内(t *testing.T) {
@@ -126,4 +126,3 @@ func TestGenerateCode_文字セット範囲内(t *testing.T) {
 		}
 	}
 }
-

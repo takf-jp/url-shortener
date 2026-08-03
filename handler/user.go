@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/takf-jp/url-shortener/service"
 	"github.com/takf-jp/url-shortener/repository"
+	"github.com/takf-jp/url-shortener/service"
 )
 
 type UserHandler struct {

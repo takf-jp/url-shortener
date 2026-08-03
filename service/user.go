@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/takf-jp/url-shortener/repository"
 	"github.com/takf-jp/url-shortener/internal/auth"
+	"github.com/takf-jp/url-shortener/repository"
 )
 
 type UserRepository interface {
@@ -50,7 +50,7 @@ func (s *UserService) Login(ctx context.Context, email, password string) (string
 		}
 		return "", fmt.Errorf("find user by email: %w", err)
 	}
-	if err:= auth.VerifyPassword(user.PasswordHash, password); err != nil {
+	if err := auth.VerifyPassword(user.PasswordHash, password); err != nil {
 		return "", ErrInvalidCredentials
 	}
 	token, err := s.jwtIssuer.Issue(user.ID)

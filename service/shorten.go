@@ -15,8 +15,8 @@ type URLRepository interface {
 
 const (
 	codeLength = 6
-	charset   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	maxRetry = 3
+	charset    = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	maxRetry   = 3
 )
 
 type ShortenService struct {

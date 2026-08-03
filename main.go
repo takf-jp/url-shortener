@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/sync/errgroup"
-    "github.com/labstack/echo/v4"
-    "github.com/labstack/echo/v4/middleware"
 
 	"github.com/takf-jp/url-shortener/db"
 	"github.com/takf-jp/url-shortener/handler"
@@ -63,20 +63,20 @@ func main() {
 	userHandler := handler.NewUserHandler(userService)
 	urlHandler := handler.NewShortenHandler(shortenService, urlRepo, clickRepo, "http://localhost:8080")
 
-    e := echo.New()
+	e := echo.New()
 	e.HideBanner = true
 	e.Use(middleware.RequestID())
 	e.Use(appmiddleware.InjectLogger(log))
-    e.Use(middleware.RequestLogger())
-    e.Use(middleware.Recover())
+	e.Use(middleware.RequestLogger())
+	e.Use(middleware.Recover())
 
 	// 公開エンドポイント
-    e.GET("/health", func(c echo.Context) error {
-        return c.JSON(200, map[string]any{
-            "status": "ok",
-			"goroutines" : runtime.NumGoroutine(),
-        })
-    })
+	e.GET("/health", func(c echo.Context) error {
+		return c.JSON(200, map[string]any{
+			"status":     "ok",
+			"goroutines": runtime.NumGoroutine(),
+		})
+	})
 	e.POST("/signup", userHandler.Signup)
 	e.POST("/login", userHandler.Login)
 	e.GET("/:code", urlHandler.Redirect)

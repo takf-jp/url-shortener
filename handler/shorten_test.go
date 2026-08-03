@@ -1,23 +1,23 @@
 package handler
 
 import (
-    "context"
-    "errors"
-    "net/http"
-    "net/http/httptest"
-    "strings"
-    "testing"
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
 
-    "github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4"
 	"github.com/takf-jp/url-shortener/repository"
 )
 
 type fakeURLFinder struct {
-	findFunc func(ctx context.Context, code string) (*repository.URL, error)
+	findFunc       func(ctx context.Context, code string) (*repository.URL, error)
 	findByUserFunc func(ctx context.Context, userID int64) ([]*repository.URL, error)
 }
 
-type fakeClickRecorder struct {}
+type fakeClickRecorder struct{}
 
 func (f *fakeClickRecorder) Insert(ctx context.Context, urlID int64, ip string, userAgent string) error {
 	return nil
@@ -64,14 +64,14 @@ func TestShortenHandler_Redirect_見つかった場合_302(t *testing.T) {
 func TestShortenHandler_Create_不正URL_400(t *testing.T) {
 	h := NewShortenHandler(nil, nil, &fakeClickRecorder{}, "http://localhost:8080")
 
-    e := echo.New()
-    body := strings.NewReader(`{"url":"not-a-url"}`)
-    req := httptest.NewRequest(http.MethodPost, "/shorten", body)
-    req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-    rec := httptest.NewRecorder()
-    c := e.NewContext(req, rec)
+	e := echo.New()
+	body := strings.NewReader(`{"url":"not-a-url"}`)
+	req := httptest.NewRequest(http.MethodPost, "/shorten", body)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
 
-    err := h.Create(c)
+	err := h.Create(c)
 
 	var httpErr *echo.HTTPError
 	if !errors.As(err, &httpErr) {
@@ -86,7 +86,7 @@ func TestShortenHandler_ListMine_正常系(t *testing.T) {
 	finder := &fakeURLFinder{
 		findByUserFunc: func(ctx context.Context, userID int64) ([]*repository.URL, error) {
 			return []*repository.URL{
-				{ID:1, Code: "abc123", OriginalURL: "https://go.dev/"},
+				{ID: 1, Code: "abc123", OriginalURL: "https://go.dev/"},
 			}, nil
 		},
 	}
@@ -115,7 +115,7 @@ func TestShortenHandler_ListMine_認証なし_401(t *testing.T) {
 	finder := &fakeURLFinder{
 		findByUserFunc: func(ctx context.Context, userID int64) ([]*repository.URL, error) {
 			return []*repository.URL{
-				{ID:1, Code: "abc123", OriginalURL: "https://go.dev/"},
+				{ID: 1, Code: "abc123", OriginalURL: "https://go.dev/"},
 			}, nil
 		},
 	}

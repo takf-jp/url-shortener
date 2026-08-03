@@ -52,8 +52,8 @@ func (r *URLRepository) FindByUserID(ctx context.Context, userID int64) ([]*URL,
 	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).
 		Order("id DESC").
 		Find(&urls).Error; err != nil {
-			return nil, fmt.Errorf("FindByUserID: %w", err)
-		}
+		return nil, fmt.Errorf("FindByUserID: %w", err)
+	}
 	return urls, nil
 }
 
