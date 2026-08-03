@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -25,7 +26,45 @@ import (
 	"github.com/takf-jp/url-shortener/service"
 )
 
+type Config struct {
+	DatabaseURL string
+	JWTSecret   string
+	BaseURL     string
+	Port        string
+}
+
+func LoadConfig() (*Config, error) {
+	c := &Config{
+		DatabaseURL: os.Getenv("DATABASE_URL"),
+		JWTSecret:   os.Getenv("JWT_SECRET"),
+		BaseURL:     os.Getenv("BASE_URL"),
+		Port:        os.Getenv("PORT"),
+	}
+	var missing []string
+	if c.DatabaseURL == "" {
+		missing = append(missing, "DATABASE_URL")
+	}
+	if c.JWTSecret == "" {
+		missing = append(missing, "JWT_SECRET")
+	}
+	if c.BaseURL == "" {
+		c.BaseURL = "http://localhost:8080"
+	}
+	if c.Port == "" {
+		c.Port = "8080"
+	}
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("missing required env: %v", missing) // まとめて報告できる
+	}
+	return c, nil
+}
+
 func main() {
+	cfg, err := LoadConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
+		os.Exit(1)
+	}
 	// Logger
 	env := os.Getenv("APP_ENV")
 	if env == "" {
@@ -41,19 +80,19 @@ func main() {
 
 	ctx = logger.WithLogger(ctx, log)
 
-	pool, err := db.New(ctx, os.Getenv("DATABASE_URL"))
+	gormDB, err := db.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Error("db connect", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	// Repositories
-	urlRepo := repository.NewURLRepository(pool)
-	userRepo := repository.NewUserRepository(pool)
-	clickRepo := repository.NewClickRepository(pool)
+	urlRepo := repository.NewURLRepository(gormDB)
+	userRepo := repository.NewUserRepository(gormDB)
+	clickRepo := repository.NewClickRepository(gormDB)
 
 	// Auth
-	jwtService := auth.NewJWTService(os.Getenv("JWT_SECRET"), time.Hour*24)
+	jwtService := auth.NewJWTService(cfg.JWTSecret, time.Hour*24)
 
 	// Services
 	shortenService := service.NewShortenService(urlRepo)
@@ -61,7 +100,7 @@ func main() {
 
 	// Handlers
 	userHandler := handler.NewUserHandler(userService)
-	urlHandler := handler.NewShortenHandler(shortenService, urlRepo, clickRepo, "http://localhost:8080")
+	urlHandler := handler.NewShortenHandler(shortenService, urlRepo, clickRepo, cfg.BaseURL)
 
 	e := echo.New()
 	e.HideBanner = true
@@ -88,10 +127,11 @@ func main() {
 	api.GET("/me/urls", urlHandler.ListMine)
 
 	g, gCtx := errgroup.WithContext(ctx)
+	port := ":" + cfg.Port
 
 	g.Go(func() error {
-		log.Info("server starting", slog.String("addr", ":8080"))
-		if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Info("server starting", slog.String("addr", port))
+		if err := e.Start(port); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("server error", slog.Any("error", err))
 			return err
 		}
