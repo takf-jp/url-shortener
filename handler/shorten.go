@@ -57,7 +57,7 @@ func (h *ShortenHandler) Create(c echo.Context) error {
 	uid, ok := middleware.GetUserIDFromContext(c)
 
 	if !ok {
-		return echo.NewHTTPError(http.StatusBadRequest, "unauthorized")
+		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 	}
 	var req shortenRequest
 	if err := c.Bind(&req); err != nil {

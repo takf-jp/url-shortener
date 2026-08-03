@@ -70,6 +70,7 @@ func TestShortenHandler_Create_不正URL_400(t *testing.T) {
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
+	c.Set("userID", int64(42)) // 認証済みとして扱い、URL 検証まで到達させる
 
 	err := h.Create(c)
 
@@ -79,6 +80,27 @@ func TestShortenHandler_Create_不正URL_400(t *testing.T) {
 	}
 	if httpErr.Code != http.StatusBadRequest {
 		t.Errorf("expected status code 400, got %d", httpErr.Code)
+	}
+}
+
+func TestShortenHandler_Create_認証なし_401(t *testing.T) {
+	h := NewShortenHandler(nil, nil, &fakeClickRecorder{}, "http://localhost:8080")
+
+	e := echo.New()
+	body := strings.NewReader(`{"url":"https://example.com"}`)
+	req := httptest.NewRequest(http.MethodPost, "/shorten", body)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec) // userID をセットしない = 未認証
+
+	err := h.Create(c)
+
+	var httpErr *echo.HTTPError
+	if !errors.As(err, &httpErr) {
+		t.Fatalf("expected an HTTPError, got %v", err)
+	}
+	if httpErr.Code != http.StatusUnauthorized {
+		t.Errorf("expected status code 401, got %d", httpErr.Code)
 	}
 }
 
