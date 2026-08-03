@@ -61,11 +61,59 @@ func TestShortenHandler_Redirect_見つかった場合_302(t *testing.T) {
 	}
 }
 
+func TestShortenHandler_Redirect_DBエラー_500(t *testing.T) {
+	finder := &fakeURLFinder{
+		findFunc: func(ctx context.Context, code string) (*repository.URL, error) {
+			return nil, errors.New("db error")
+		},
+	}
+	h := NewShortenHandler(nil, finder, &fakeClickRecorder{}, "http://localhost:8080")
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/abc123", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("code")
+	c.SetParamValues("abc123")
+
+	err := h.Redirect(c)
+
+	var httpErr *echo.HTTPError
+	if !errors.As(err, &httpErr) {
+		t.Fatalf("expected an HTTPError, got %v", err)
+	}
+	if httpErr.Code != http.StatusInternalServerError {
+		t.Errorf("expected status code 500, got %d", httpErr.Code)
+	}
+}
+
 func TestShortenHandler_Create_不正URL_400(t *testing.T) {
 	h := NewShortenHandler(nil, nil, &fakeClickRecorder{}, "http://localhost:8080")
 
 	e := echo.New()
 	body := strings.NewReader(`{"url":"not-a-url"}`)
+	req := httptest.NewRequest(http.MethodPost, "/shorten", body)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("userID", int64(42)) // 認証済みとして扱い、URL 検証まで到達させる
+
+	err := h.Create(c)
+
+	var httpErr *echo.HTTPError
+	if !errors.As(err, &httpErr) {
+		t.Fatalf("expected an HTTPError, got %v", err)
+	}
+	if httpErr.Code != http.StatusBadRequest {
+		t.Errorf("expected status code 400, got %d", httpErr.Code)
+	}
+}
+
+func TestShortenHandler_Create_不正URLスキーム_400(t *testing.T) {
+	h := NewShortenHandler(nil, nil, &fakeClickRecorder{}, "http://localhost:8080")
+
+	e := echo.New()
+	body := strings.NewReader(`{"url":"javascript:alert(document.cookie)"}`)
 	req := httptest.NewRequest(http.MethodPost, "/shorten", body)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -66,8 +67,16 @@ func (h *ShortenHandler) Create(c echo.Context) error {
 	if req.OriginalURL == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "url is required")
 	}
-	if _, err := url.ParseRequestURI(req.OriginalURL); err != nil {
+
+	parsed, err := url.ParseRequestURI(req.OriginalURL)
+	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid url format")
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return echo.NewHTTPError(http.StatusBadRequest, "url must start with http or https")
+	}
+	if parsed.Host == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "url must have a host")
 	}
 
 	u, err := h.shortenService.Shorten(c.Request().Context(), &uid, req.OriginalURL)
@@ -89,8 +98,11 @@ func (h *ShortenHandler) Redirect(c echo.Context) error {
 	code := c.Param("code")
 	u, err := h.urlRepo.FindByCode(ctx, code)
 	if err != nil {
-		// ErrNotFoundの場合は404を返す, それ以外のエラーは500を返す
-		return echo.NewHTTPError(http.StatusNotFound, "url not found")
+		if errors.Is(err, repository.ErrNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, "url not found")
+		}
+		log.Error("failed to find url", "error", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to retrieve url")
 	}
 	// ★ 非同期でクリック記録
 	// 重要: ctx をそのまま渡すと、 c.Request().Context() が
