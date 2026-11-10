@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Instagram 原寸画像オープナー",
+  "version": "1.0.0",
+  "description": "Instagram の個別ポストに投稿された画像を、右クリックメニューから原寸サイズで別タブに開きます。",
+  "permissions": ["contextMenus", "scripting", "activeTab"],
+  "host_permissions": ["https://www.instagram.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
